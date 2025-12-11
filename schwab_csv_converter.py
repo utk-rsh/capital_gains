@@ -11,6 +11,7 @@ dividends_received_per_year = {
     "2021/22": 0,
     "2022/23": 0,
     "2023/24": 0,
+    "2024/25": 0,
 }
 ignored_actions = set()
 
@@ -50,6 +51,9 @@ def defineManualStockSplit(chunks):
     if dd_mm_yyyy_date == "06/06/2022" and company_name == "AMZN":
         multiplier = "20"
 
+    if dd_mm_yyyy_date == "10/06/2024" and company_name == "NVDA":
+        multiplier = "10"
+
     print("handling split for ", chunks)
     return "SPLIT " + output_line + multiplier
 
@@ -69,10 +73,7 @@ def getGbpUsdConversionMap():
         month = date_chunks[0]
         year = date_chunks[1]
         gbp_usd_rate = chunks[1]
-        if year in year_month_rate_dict:
-            year_month_rate_dict[year][month] = gbp_usd_rate
-        else:
-            year_month_rate_dict[year] = {month: gbp_usd_rate}
+        year_month_rate_dict[year][month] = gbp_usd_rate
 
     return year_month_rate_dict
 
@@ -140,8 +141,10 @@ def trackDividendPerYear(chunks):
     )
     fiscal_year = financialYearFromMonthYear(dd_mm_yyyy_date)
     if fiscal_year not in dividends_received_per_year:
-        raise Exception("fiscal year not in dividend map. Year is ", fiscal_year)
-    dividend_value = float("{:.2f}".format(float(chunks[7].replace("$", ""))))
+        raise Exception(f"fiscal year not in dividend map. Year is {fiscal_year}")
+    dividend_usd = float(chunks[7].replace("$", ""))
+    gbp_usd_rate = getGbpUsdRateFromDate(dd_mm_yyyy_date)
+    dividend_value = float("{:.2f}".format(dividend_usd / gbp_usd_rate))
     dividends_received_per_year[fiscal_year] += dividend_value
     return
 
@@ -153,6 +156,7 @@ def processSchwabCSV():
 
     filtered_lines = []
     for line in lines:
+        print("line is ", line)
         if line[0:4] in ["Tran", '"Tra', '"Dat']:
             # Hack to exclude the first two and last line put by Schwab.
             # Can do it more cleanly
@@ -160,8 +164,8 @@ def processSchwabCSV():
             continue
 
         chunks = [word.replace('"', "") for word in line.split(",")]
-        month = int(chunks[0][0:2]) # taking first 2 chars (mm/dd/yyyy)
-        year = int(chunks[0][6:10]) # taking 6th to 9th chars (mm/dd/yyyy)
+        month = int(chunks[0][0:2])  # taking first 2 chars (mm/dd/yyyy)
+        year = int(chunks[0][6:10])  # taking 6th to 9th chars (mm/dd/yyyy)
 
         ################################
         ## IMPORTANT!! SKIPS FB STOCK ##
@@ -169,14 +173,14 @@ def processSchwabCSV():
         if chunks[2] == "FB" or chunks[2] == "META":
             # don't handle FB stock
             continue
-        elif (chunks[2] in ["SNAP","ABNB","LYFT","TSLA"] and year <= 2023):
+        elif chunks[2] in ["SNAP", "ABNB", "LYFT", "TSLA"] and year <= 2023:
             # Because Schwab isn't giving me history before 2020 anymore, using this
             # as a way of ignoring all the buy and sells which had no impact to calculations
             # in 2023-24 year and beyond. As a result of this line, returns before the 23-24
             # year can no longer be trusted.
             print("Ignoring line of ", line)
             continue
-        elif (chunks[2] in ["PLTR"] and year <= 2021 and month <= 4):
+        elif chunks[2] in ["PLTR"] and year <= 2021 and month <= 4:
             # Same as previous case, but handling PLTR separately because some disposal happened in 23-24.
             # Next year onwards, this can be consolidated into line above.
             print("Ignoring line of ", line)
@@ -213,8 +217,6 @@ def processSchwabCSV():
             trackDividendPerYear(chunks)
         else:
             ignored_actions.add(chunks[1])
-
-        continue
 
     with open(output_filename, "w") as output_file:
         for line in filtered_lines:
