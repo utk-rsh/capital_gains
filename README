@@ -5,7 +5,9 @@ Things to watch out for:
 Steps:
 - Download CSV from schwab.
 - Name as schwab_original.csv
-- Run schwab_csv_converter.py
+- Add entry for dividend for next year in key value map
 - Get month gbp to usd rates from https://www.gov.uk/government/publications/hmrc-exchange-rates-for-2022-monthly
+- Run schwab_csv_converter.py
 - Put them in a file called gbp_usd.csv. Make sure those rates are in csv format
 - Paste output of filtered_scwab.csv in https://cgtcalc.galloway.me.uk/
+- Copy paste transformed schwab output into existing record keeping file
