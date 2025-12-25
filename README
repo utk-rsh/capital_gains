@@ -1,13 +1,67 @@
-Things to watch out for:
-- Ignores FB stock. So if not sold immediately, calculate gains/losses there
-- Only does buy/sell/split/reinvestment. Ignores the other lines (including options)
+# Capital Gains Tax Calculator - CSV Converters
 
-Steps:
-- Download CSV from schwab.
-- Name as schwab_original.csv
-- Add entry for dividend for next year in key value map
-- Get month gbp to usd rates from https://www.gov.uk/government/publications/hmrc-exchange-rates-for-2022-monthly
-- Run schwab_csv_converter.py
-- Put them in a file called gbp_usd.csv. Make sure those rates are in csv format
-- Paste output of filtered_scwab.csv in https://cgtcalc.galloway.me.uk/
-- Copy paste transformed schwab output into existing record keeping file
+This repo contains CSV converters to transform brokerage transaction histories into a format compatible with https://cgtcalc.galloway.me.uk/ for UK capital gains tax reporting.
+
+---
+
+## Common Steps
+
+### Before Running Script
+
+**Exchange Rate Updates**
+- Get monthly GBP/USD rates from https://www.gov.uk/government/publications/hmrc-exchange-rates-for-2024-monthly
+- Update `gbp_usd.csv` with new monthly rates (format: `MM/YYYY, rate`)
+
+**Dividend Year Setup**
+- Add entry for next fiscal year in `dividends_received_per_year` map in the converter file if needed
+- UK fiscal year runs from April 6 - April 5
+
+### After Running Script
+
+**Review Console Output**
+- Dividends summary per fiscal year
+- Ignored transaction types
+- (IBKR only) Skipped header lines
+
+**Upload to CGT Calculator**
+- Paste output from `filtered_*.csv` into https://cgtcalc.galloway.me.uk/
+- Copy transformed output into record keeping file
+
+---
+
+## Schwab CSV Converter
+
+### Key Caveats
+- **Ignores META/FB stock** - If not sold immediately, calculate gains/losses separately
+- **Only processes**: Buy/Sell/Split/Reinvestment transactions
+- **Ignores**: Options, wire transfers, and other transaction types
+- **Dividends**: Tracks per UK fiscal year (April 6 - April 5) and prints summary. Note: Dividend values are after US withholding tax, so keep this in mind for UK tax reporting
+
+### Steps
+1. Download CSV from Schwab
+2. Rename file to `schwab_original.csv`
+3. See Common Steps: Before Running Script
+4. Run `python3 schwab_csv_converter.py`
+5. See Common Steps: After Running Script
+
+---
+
+## IBKR CSV Converter
+
+### Key Assumptions
+- **Net Amount is always in USD** - All Net Amount values in IBKR CSV are treated as USD (account base currency)
+- **Price conversion**: Transaction prices converted from USD to GBP using historical exchange rates
+- **Dividend conversion**: Dividend values converted from USD to GBP for UK tax reporting
+
+### Key Caveats
+- **Stock splits**: Currently not supported - will throw error if detected
+- **Forex bug**: IBKR adds commas to large numbers in "Net Amount from Forex Trade" lines (e.g., "47,460") - converter preprocesses to fix this
+- **Commission**: Included in effective price per share (uses Net Amount / Quantity)
+- **Dividends**: Tracks per UK fiscal year and uses Net Amount (after US withholding tax). Note: Dividend values are after US withholding tax, so keep this in mind for UK tax reporting
+
+### Steps
+1. Download transaction history CSV from IBKR
+2. Rename file to `interactive_brokers_raw.csv`
+3. See Common Steps: Before Running Script
+4. Run `python3 ibkr_csv_converter.py`
+5. See Common Steps: After Running Script
