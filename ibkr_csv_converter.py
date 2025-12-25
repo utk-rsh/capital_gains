@@ -182,8 +182,13 @@ def processIBKRCSV():
             filtered_lines.append(formatted_line)
             print(f"{transaction_type} formatted line: {formatted_line}")
 
-        # Handle Dividends
-        elif transaction_type == "Dividend":
+        # Handle Dividends and Payment in Lieu
+        elif transaction_type in ["Dividend", "Payment in Lieu"]:
+            # For Payment in Lieu, verify it's dividend-related
+            if transaction_type == "Payment in Lieu":
+                description = chunks[4].lower()
+                if "dividend" not in description:
+                    raise Exception(f"Payment in Lieu without 'dividend' in description - unexpected situation, please manually check: {line}")
             trackDividendPerYear(chunks)
 
         # Ignore other transaction types
